@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>دردشة فيديو</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="profile.css">
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+</head>
+<body>
+    <main id="app">
+        <div class="app-container">
+            <!-- قسم الفيديو -->
+            <div class="video-section">
+                <video id="remote" autoplay playsinline></video>
+                <video id="local" autoplay muted playsinline></video>
+                <!-- شريط التحكم (يحتوي على زر الثيم) -->
+                <div class="video-controls">
+                    <button class="control-item theme-toggle" id="themeToggle">🌙</button>
+                    <select id="resolution" class="control-item">
+                        <option value="144">144p</option>
+                        <option value="240">240p</option>
+                        <option value="360">360p</option>
+                        <option value="480" selected>480p</option>
+                        <option value="720">720p</option>
+                        <option value="1080">1080p</option>
+                    </select>
+                    <button id="flip" class="control-item control-icon">🔄</button>
+                    <button id="muteBtn" class="control-item control-icon">🔊</button>
+                    <button id="endCallBtn" class="control-item control-icon end-call hidden">🔴</button>
+                </div>
+            </div>
+
+            <!-- شريط الرسائل المتحرك -->
+            <div class="ticker-container" id="ticker-box" style="display: none;">
+                <div class="ticker-text" id="ticker-message"></div>
+            </div>
+
+            <!-- المحتوى الجانبي -->
+            <div class="content-section">
+                <div class="profile-card">
+                    <span class="profile-name" id="displayName"></span>
+                    <span class="profile-age" id="displayAge"></span>
+                    <button id="logout">تسجيل خروج</button>
+                </div>
+
+                <div class="online-card">
+                    <div class="card-title">
+                        المتصلون الآن
+                        <span id="onlineCount" class="online-count">(0)</span>
+                    </div>
+                    <div class="filter-bar">
+                        <label for="countryFilter">تصفية حسب البلد:</label>
+                        <select id="countryFilter">
+                            <option value="all">جميع البلدان</option>
+                        </select>
+                    </div>
+                    <div id="onlineList"></div>
+                </div>
+
+                <div class="id-badge" id="idBadge">🆔 <span id="myId">جاري التحميل...</span></div>
+
+                <div class="chat-card">
+                    <div id="messages"></div>
+                    <div class="chat-input-area">
+                        <button id="emojiBtn">😀</button>
+                        <input type="text" id="chatInput" placeholder="رسالة...">
+                        <button id="sendBtn">إرسال</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- مربعات الحوار -->
+        <div id="logoutDialog" class="dialog hidden">
+            <div class="dialog-content">
+                <p>هل أنت متأكد من تسجيل الخروج؟</p>
+                <div class="dialog-buttons">
+                    <button id="confirmLogout" class="dialog-btn confirm">نعم</button>
+                    <button id="cancelLogout" class="dialog-btn cancel">لا</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="suspendedDialog" class="dialog hidden">
+            <div class="dialog-content">
+                <p>تم تعليق حسابك. يرجى التواصل مع الدعم.</p>
+                <div class="dialog-buttons">
+                    <button id="suspendedOkBtn" class="dialog-btn confirm">حسناً</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="emojiPicker" class="hidden">
+            <span class="emoji">😂</span>
+            <span class="emoji">❤️</span>
+            <span class="emoji">👍</span>
+            <span class="emoji">🔥</span>
+            <span class="emoji">👋</span>
+            <span class="emoji">😍</span>
+        </div>
+    </main>
+
+    <script src="profile.js"></script>
+</body>
+</html>

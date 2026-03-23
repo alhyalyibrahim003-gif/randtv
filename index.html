@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>تسجيل الدخول - منصتي</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <div class="brand-section">
+            <div class="brand-logo">
+                <i class="fas fa-video"></i>
+            </div>
+            <h1>مرحباً بك</h1>
+            <p>بوابتك الأنيقة للعالم الرقمي</p>
+        </div>
+
+        <div class="form-section">
+            <div class="theme-switch-wrapper">
+                <label class="theme-switch">
+                    <input type="checkbox" id="themeCheckbox">
+                    <span class="slider round">
+                        <i class="fas fa-sun icon-sun"></i>
+                        <i class="fas fa-moon icon-moon"></i>
+                    </span>
+                </label>
+            </div>
+
+            <!-- نموذج تسجيل الدخول -->
+            <form id="login-form" class="auth-form form-active">
+                <h2>تسجيل الدخول</h2>
+                <div id="login-error-message" class="error-msg"></div>
+                <div class="input-group">
+                    <i class="fas fa-envelope input-icon"></i>
+                    <input type="email" id="login-email" placeholder="البريد الإلكتروني" required>
+                </div>
+                <div class="input-group">
+                    <i class="fas fa-lock input-icon"></i>
+                    <input type="password" id="login-password" placeholder="كلمة المرور" required>
+                </div>
+                <button type="submit" class="btn-primary" id="login-btn">دخول</button>
+                <p class="switch-p">ليس لديك حساب؟ <a href="#" id="show-register">إنشاء حساب جديد</a></p>
+            </form>
+
+            <!-- نموذج إنشاء حساب -->
+            <form id="register-form" class="auth-form form-hidden">
+                <h2>إنشاء حساب جديد</h2>
+                <div id="error-message" class="error-msg"></div>
+                <div class="input-group">
+                    <i class="fas fa-user input-icon"></i>
+                    <input type="text" id="reg-name" placeholder="الاسم الكامل" required>
+                </div>
+                <div class="input-group">
+                    <i class="fas fa-calendar-alt input-icon"></i>
+                    <input type="number" id="reg-age" placeholder="العمر (أقصى 60)" min="1" max="60" required>
+                </div>
+                <div class="input-group">
+                    <i class="fas fa-globe input-icon"></i>
+                    <input type="text" id="reg-country" list="countries-list" placeholder="الدولة" autocomplete="off" required>
+                    <datalist id="countries-list">
+                        <option value="مصر">
+                        <option value="السعودية">
+                        <option value="الإمارات">
+                        <option value="الكويت">
+                        <option value="قطر">
+                        <option value="البحرين">
+                        <option value="عمان">
+                        <option value="اليمن">
+                        <option value="العراق">
+                        <option value="الأردن">
+                        <option value="لبنان">
+                        <option value="سوريا">
+                        <option value="فلسطين">
+                        <option value="ليبيا">
+                        <option value="تونس">
+                        <option value="الجزائر">
+                        <option value="المغرب">
+                        <option value="موريتانيا">
+                        <option value="السودان">
+                        <option value="تركيا">
+                        <option value="إيران">
+                        <option value="باكستان">
+                        <option value="أفغانستان">
+                        <option value="الهند">
+                        <option value="أمريكا">
+                        <option value="كندا">
+                        <option value="بريطانيا">
+                        <option value="فرنسا">
+                        <option value="ألمانيا">
+                        <option value="إيطاليا">
+                        <option value="إسبانيا">
+                        <option value="روسيا">
+                        <option value="الصين">
+                        <option value="اليابان">
+                        <option value="أستراليا">
+                    </datalist>
+                </div>
+                <div class="input-group">
+                    <i class="fas fa-envelope input-icon"></i>
+                    <input type="email" id="reg-email" placeholder="البريد الإلكتروني" required>
+                </div>
+                <div class="input-group">
+                    <i class="fas fa-lock input-icon"></i>
+                    <input type="password" id="reg-password" placeholder="كلمة المرور (8 أحرف على الأقل)" minlength="8" required>
+                </div>
+                <div class="input-group">
+                    <i class="fas fa-check-circle input-icon"></i>
+                    <input type="password" id="reg-confirm-password" placeholder="تأكيد كلمة المرور" required>
+                </div>
+                <button type="submit" class="btn-primary">متابعة التسجيل</button>
+                <p class="switch-p">لديك حساب بالفعل؟ <a href="#" id="show-login">تسجيل الدخول هنا</a></p>
+            </form>
+
+            <!-- نموذج التحقق من رمز OTP -->
+            <form id="verify-form" class="auth-form form-hidden">
+                <h2>تفعيل الحساب</h2>
+                <div id="verify-error-message" class="error-msg"></div>
+                <p style="text-align: center; margin-bottom: 15px;">أدخل رمز التحقق المرسل إلى بريدك الإلكتروني</p>
+                <div class="input-group">
+                    <i class="fas fa-key input-icon"></i>
+                    <input type="text" id="verify-code" placeholder="6 أرقام" maxlength="6" required>
+                </div>
+                <button type="submit" class="btn-primary">تحقق</button>
+                <p class="switch-p"><a href="#" id="back-to-register">تعديل البيانات</a></p>
+            </form>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
