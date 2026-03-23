@@ -12,8 +12,8 @@ const userName = localStorage.getItem('userName') || 'يا صديقي';
 const userAge = localStorage.getItem('userAge') || '?';
 let userCountry = localStorage.getItem('userCountry') || '';
 
-// تنظيف البلد من أي مسافات زائدة
-userCountry = userCountry.trim();
+// تنظيف البلد بشكل قوي (إزالة المسافات وتحويل إلى أحرف صغيرة)
+userCountry = userCountry.trim().toLowerCase();
 
 // إذا لم يكن للمستخدم بلد، نعطيه قيمة افتراضية
 if (!userCountry) {
@@ -399,8 +399,7 @@ peer.on("connection", function(conn) {
     currentConnection = conn;
 });
 
-// ---------- تعبئة قائمة البلدان (مع تحديث فوري) ----------
-let countryListLoaded = false;
+// ---------- تعبئة قائمة البلدان (للتحميل الأول) ----------
 function populateCountryFilter() {
     const filterSelect = document.getElementById('countryFilter');
     if (!filterSelect) return;
@@ -409,8 +408,8 @@ function populateCountryFilter() {
         const countries = new Set();
         if (users) {
             Object.values(users).forEach(u => {
-                if (u.country && u.country.trim() !== '') {
-                    countries.add(u.country.trim());
+                if (u.country && u.country.trim() !== '' && u.country !== 'غير محدد') {
+                    countries.add(u.country.trim().toLowerCase());
                 }
             });
         }
@@ -422,74 +421,100 @@ function populateCountryFilter() {
         if (userCountry && countries.has(userCountry)) {
             filterSelect.value = userCountry;
         }
-        countryListLoaded = true;
-        console.log("🌍 قائمة البلدان المتاحة:", Array.from(countries));
     });
 }
 
-// ---------- استماع لتغييرات المتصلين (تحديث فوري وسريع) ----------
+// ---------- استماع لتغييرات المتصلين (تحديث الأرقام والقائمة فوراً) ----------
 onlineRef.on("value", function(snapshot) {
     if (!onlineListDiv) return;
     const users = snapshot.val();
     onlineListDiv.innerHTML = "";
     
-    let sameCountryCount = 0;
-    let totalOnline = 0;
     const now = Date.now();
-    const selectedCountry = document.getElementById('countryFilter')?.value || 'all';
-    const currentUserCountry = userCountry; // تم تنظيفه بالفعل
+    const filterSelect = document.getElementById('countryFilter');
+    const currentSelection = filterSelect ? filterSelect.value : 'all';
+    const countriesSet = new Set(); 
+    
+    let visibleCount = 0; // العداد الحقيقي للمستخدمين الظاهرين فقط
 
     if (!users) {
         onlineListDiv.innerHTML = "<span class='online-list-placeholder'>لا يوجد متصلون</span>";
-    } else {
-        let count = 0;
-        for (const key in users) {
-            if (key === myPeerId) continue;
-            const u = users[key];
-            const isOnline = u.lastSeen && (now - u.lastSeen < 30000);
-            if (!isOnline) continue;
-            
-            totalOnline++;
-            
-            // تنظيف بلد المستخدم الآخر
-            const otherCountry = u.country ? u.country.trim() : '';
-            if (currentUserCountry && currentUserCountry !== 'غير محدد' && otherCountry === currentUserCountry) {
-                sameCountryCount++;
-            }
-            
-            if (selectedCountry !== 'all' && otherCountry !== selectedCountry) continue;
-            count++;
-            const btn = document.createElement("button");
-            btn.className = "user-btn";
-            if (key === currentCallPeerId) btn.classList.add("active");
-            btn.textContent = u.name + " (" + (u.age || "?") + ")";
-            btn.onclick = (function(pid) {
-                return function() { toggleCall(pid); };
-            })(key);
-            onlineListDiv.appendChild(btn);
+        const onlineCountSpan = document.getElementById('onlineCount');
+        if (onlineCountSpan) onlineCountSpan.innerText = "(0)";
+        return;
+    }
+
+    // 1. جمع البلدان النشطة حالياً لتحديث القائمة المنسدلة فوراً
+    for (const key in users) {
+        if (key === myPeerId) continue;
+        const u = users[key];
+        const isOnline = u.lastSeen && (now - u.lastSeen < 30000);
+        if (isOnline && u.country && u.country.trim() !== '' && u.country !== 'غير محدد') {
+            countriesSet.add(u.country.trim().toLowerCase());
         }
-        if (count === 0) {
-            onlineListDiv.innerHTML = "<span class='online-list-placeholder'>لا يوجد متصلون آخرون</span>";
+    }
+
+    // 2. بناء الأزرار وحساب العدد الحقيقي
+    for (const key in users) {
+        if (key === myPeerId) continue;
+        const u = users[key];
+        const isOnline = u.lastSeen && (now - u.lastSeen < 30000);
+        if (!isOnline) continue;
+        
+        const otherCountry = u.country ? u.country.trim().toLowerCase() : '';
+        
+        // إذا كان هناك فلتر محدد والمستخدم ليس من هذا البلد، تجاوزه
+        if (currentSelection !== 'all' && otherCountry !== currentSelection) continue;
+        
+        visibleCount++; // زيادة عداد الأرقام الحقيقي
+        
+        const btn = document.createElement("button");
+        btn.className = "user-btn";
+        if (key === currentCallPeerId) btn.classList.add("active");
+        
+        // عرض الاسم والعمر فقط (بدون البلد) مع حماية ضد undefined
+        const safeName = (u.name && u.name !== "undefined") ? u.name : "مجهول";
+        const safeAge = (u.age && u.age !== "undefined") ? u.age : "?";
+        btn.textContent = safeName + " (" + safeAge + ")";
+        
+        btn.onclick = (function(pid) {
+            return function() { toggleCall(pid); };
+        })(key);
+        onlineListDiv.appendChild(btn);
+    }
+    
+    if (visibleCount === 0) {
+        onlineListDiv.innerHTML = "<span class='online-list-placeholder'>لا يوجد متصلون آخرون</span>";
+    }
+    
+    // 3. تحديث قائمة البلدان المنسدلة
+    if (filterSelect) {
+        let options = '<option value="all">جميع البلدان</option>';
+        Array.from(countriesSet).sort().forEach(c => {
+            options += `<option value="${c}">${c}</option>`;
+        });
+        filterSelect.innerHTML = options;
+        // إبقاء اختيار المستخدم إذا كان البلد لا يزال في القائمة
+        if (currentSelection !== 'all' && countriesSet.has(currentSelection)) {
+            filterSelect.value = currentSelection;
+        } else {
+            filterSelect.value = 'all';
         }
     }
     
-    // تحديث العداد فوراً
+    // 4. تحديث رقم العداد بشكل حقيقي ودقيق
     const onlineCountSpan = document.getElementById('onlineCount');
     if (onlineCountSpan) {
-        if (currentUserCountry && currentUserCountry !== 'غير محدد') {
-            onlineCountSpan.innerText = `(${sameCountryCount})`;
-        } else {
-            onlineCountSpan.innerText = `(${totalOnline})`;
-        }
+        onlineCountSpan.innerText = `(${visibleCount})`;
     }
 });
 
-// ---------- مستمع تغيير الفلتر (تحديث فوري دون تأخير) ----------
-const filterSelect = document.getElementById('countryFilter');
-if (filterSelect) {
-    filterSelect.addEventListener('change', () => {
-        // إعادة تشغيل الحدث يدوياً لتحديث القائمة فوراً
-        onlineRef.once('value'); // استدعاء فوري
+// ---------- مستمع تغيير الفلتر (تحديث فوري) ----------
+const filterSelectElement = document.getElementById('countryFilter');
+if (filterSelectElement) {
+    filterSelectElement.addEventListener('change', () => {
+        // إعادة تحديث القائمة فوراً
+        onlineRef.once('value');
     });
 }
 
