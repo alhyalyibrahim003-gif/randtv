@@ -10,7 +10,17 @@ const isLoggedIn = localStorage.getItem('userLoggedIn');
 const userEmail = localStorage.getItem('userEmail');
 const userName = localStorage.getItem('userName') || 'يا صديقي';
 const userAge = localStorage.getItem('userAge') || '?';
-const userCountry = localStorage.getItem('userCountry') || '';
+let userCountry = localStorage.getItem('userCountry') || '';
+
+// تنظيف البلد من أي مسافات زائدة
+userCountry = userCountry.trim();
+
+// إذا لم يكن للمستخدم بلد، نعطيه قيمة افتراضية
+if (!userCountry) {
+    userCountry = 'غير محدد';
+    localStorage.setItem('userCountry', userCountry);
+    console.warn('⚠️ لم يتم تحديد بلد للمستخدم. تم تعيين قيمة افتراضية: "غير محدد"');
+}
 
 let serverMessage = "";
 
@@ -105,31 +115,30 @@ const firebaseConfig = {
     messagingSenderId: "281875165600",
     appId: "1:281875165600:web:41263c687d86e8d7e074c5"
 };
-firebase.initializeApp(firebaseConfig);
+if (!firebase.apps.length) {
+    firebase.initializeApp(firebaseConfig);
+}
 const db = firebase.database();
 const onlineRef = db.ref("online-users");
 
-// ---------- إعدادات PeerJS مع خوادم TURN من ExpressTURN (مع secure) ----------
+// ---------- إعدادات PeerJS (مع ExpressTURN) ----------
 const peer = new Peer({
-    secure: true,   // استخدام HTTPS
+    secure: true,
+    pingInterval: 3000,
+    debug: 2,
     config: {
         'iceServers': [
             { urls: 'stun:stun.l.google.com:19302' },
             { urls: 'stun:stun1.l.google.com:19302' },
-            { urls: 'stun:stun2.l.google.com:19302' },
-            { urls: 'stun:stun3.l.google.com:19302' },
-            { urls: 'stun:stun4.l.google.com:19302' },
-            { urls: 'stun:stun.stunprotocol.org:3478' },
-            // خادم TURN من ExpressTURN
             {
-                urls: 'turn:free.expressturn.com:3478',
-                username: '000000002089553375',
-                credential: 'JbH5oi23aNVXfIro2WjTMf9t8m8'
+                urls: "turn:free.expressturn.com:3478",
+                username: "000000002089553375",
+                credential: "JbH5oi23aNVXflro2WjTM"
             },
             {
-                urls: 'turn:free.expressturn.com:443?transport=tcp',
-                username: '000000002089553375',
-                credential: 'JbH5oi23aNVXfIro2WjTMf9t8m8'
+                urls: "turn:free.expressturn.com:443?transport=tcp",
+                username: "000000002089553375",
+                credential: "JbH5oi23aNVXflro2WjTM"
             }
         ]
     }
@@ -210,14 +219,10 @@ function getResolutionConstraints(resValue) {
 }
 
 async function initCamera() {
-    if (isCameraInitializing) {
-        console.log("⚠️ جاري تهيئة الكاميرا بالفعل، انتظر...");
-        return;
-    }
+    if (isCameraInitializing) return;
     isCameraInitializing = true;
     try {
         if (localStream) {
-            console.log("🛑 إيقاف التيار القديم...");
             localStream.getTracks().forEach(track => track.stop());
             localStream = null;
             if (localVideo) localVideo.srcObject = null;
@@ -232,9 +237,7 @@ async function initCamera() {
             },
             audio: true
         };
-        console.log("📷 طلب الكاميرا...");
         localStream = await navigator.mediaDevices.getUserMedia(constraints);
-        console.log("✅ تم الحصول على التيار");
 
         if (localVideo) {
             localVideo.srcObject = localStream;
@@ -246,11 +249,10 @@ async function initCamera() {
         const audioTrack = localStream.getAudioTracks()[0];
         if (audioTrack) audioTrack.enabled = !isMuted;
 
-        console.log("✅ الكاميرا تعمل بالدقة:", resolutionSelect?.value);
         return localStream;
     } catch (err) {
-        console.error("❌ خطأ في الكاميرا:", err.name, err.message);
-        alert("خطأ في تشغيل الكاميرا: " + (err.message || err.name) + "\nتأكد من منح الإذن للكاميرا.");
+        console.error("❌ خطأ في الكاميرا:", err);
+        alert("خطأ في تشغيل الكاميرا: " + (err.message || err.name) + "\nتأكد من منح الإذن.");
         throw err;
     } finally {
         isCameraInitializing = false;
@@ -264,10 +266,7 @@ async function updateVideoTrackInCall() {
         const senders = currentCall.peerConnection.getSenders();
         const videoSender = senders.find(s => s.track && s.track.kind === "video");
         if (videoSender) {
-            try {
-                await videoSender.replaceTrack(videoTrack);
-                console.log("✅ تم تحديث مسار الفيديو");
-            } catch (err) { console.error("❌ فشل تحديث مسار الفيديو:", err); }
+            try { await videoSender.replaceTrack(videoTrack); } catch (err) { console.error("فشل تحديث الفيديو:", err); }
         }
     }
 }
@@ -279,10 +278,7 @@ async function updateAudioTrackInCall() {
         const senders = currentCall.peerConnection.getSenders();
         const audioSender = senders.find(s => s.track && s.track.kind === "audio");
         if (audioSender) {
-            try {
-                await audioSender.replaceTrack(audioTrack);
-                console.log("✅ تم تحديث مسار الصوت");
-            } catch (err) { console.error("❌ فشل تحديث مسار الصوت:", err); }
+            try { await audioSender.replaceTrack(audioTrack); } catch (err) { console.error("فشل تحديث الصوت:", err); }
         }
     }
 }
@@ -321,28 +317,27 @@ if (muteBtn) {
             if (currentCall && currentCall.peerConnection) {
                 const senders = currentCall.peerConnection.getSenders();
                 const audioSender = senders.find(s => s.track && s.track.kind === "audio");
-                if (audioSender) {
-                    audioSender.replaceTrack(audioTrack).catch(e => console.error("فشل تحديث مسار الصوت:", e));
-                }
+                if (audioSender) audioSender.replaceTrack(audioTrack).catch(e => console.error(e));
             }
         }
     });
 }
 
-// ---------- أحداث PeerJS ----------
+// ---------- أحداث PeerJS وإدارة الاتصال ----------
 peer.on("open", function(id) {
     myPeerId = id;
     if (myIdSpan) myIdSpan.innerText = id;
     console.log("✅ معرفك:", id);
 
     const userStatusRef = onlineRef.child(myPeerId);
-    userStatusRef.set({
+    const dataToSend = {
         name: user.name,
         age: user.age,
         country: user.country,
         lastSeen: firebase.database.ServerValue.TIMESTAMP
-    });
-    console.log("📤 رفع بيانات المستخدم إلى Firebase:", { name: user.name, age: user.age, country: user.country });
+    };
+    console.log("📤 رفع بيانات المستخدم إلى Firebase:", dataToSend);
+    userStatusRef.set(dataToSend);
 
     userStatusRef.onDisconnect().remove();
 
@@ -351,9 +346,23 @@ peer.on("open", function(id) {
     }, 10000);
 });
 
+peer.on("disconnected", function() {
+    console.warn("⚠️ تم فصل الاتصال بخادم المكالمات، جاري إزالة اسمك من القائمة وإعادة المحاولة...");
+    if (myPeerId) {
+        onlineRef.child(myPeerId).remove(); 
+    }
+    peer.reconnect(); 
+});
+
 peer.on("error", function(err) {
     console.error("❌ خطأ PeerJS:", err);
-    alert("خطأ في الاتصال بخادم PeerJS: " + err.type + "\nقد تحتاج إلى تحديث الصفحة.");
+    if (err.type === 'peer-unavailable') {
+        alert("الطرف الآخر غير متاح حالياً (ربما أغلق الشاشة أو انقطع اتصاله).");
+        updateOnlineList(); 
+    } else if (err.type === 'network' || err.type === 'server-error' || err.type === 'unavailable-id') {
+        if (myPeerId) onlineRef.child(myPeerId).remove();
+        peer.reconnect();
+    }
 });
 
 peer.on("call", function(call) {
@@ -368,11 +377,9 @@ peer.on("call", function(call) {
     }
     call.answer(localStream);
     call.on("stream", function(remoteStream) {
-        console.log("✅ تم استقبال بث الفيديو");
         if (remoteVideo) remoteVideo.srcObject = remoteStream;
     });
     call.on("close", function() {
-        console.log("🔚 انتهت المكالمة");
         if (remoteVideo) remoteVideo.srcObject = null;
         if (endCallBtn) endCallBtn.classList.add("hidden");
         currentCall = null;
@@ -383,24 +390,17 @@ peer.on("call", function(call) {
     if (endCallBtn) endCallBtn.classList.remove("hidden");
 
     const conn = peer.connect(call.peer);
-    conn.on("open", function() {
-        console.log("💬 اتصال دردشة مفتوح مع:", call.peer);
-        currentConnection = conn;
-    });
-    conn.on("data", function(data) {
-        displayMessage(data, "other");
-    });
+    conn.on("open", function() { currentConnection = conn; });
+    conn.on("data", function(data) { displayMessage(data, "other"); });
 });
 
 peer.on("connection", function(conn) {
-    console.log("💬 اتصال دردشة واردة من:", conn.peer);
-    conn.on("data", function(data) {
-        displayMessage(data, "other");
-    });
+    conn.on("data", function(data) { displayMessage(data, "other"); });
     currentConnection = conn;
 });
 
-// ---------- تعبئة قائمة البلدان ----------
+// ---------- تعبئة قائمة البلدان (مع تحديث فوري) ----------
+let countryListLoaded = false;
 function populateCountryFilter() {
     const filterSelect = document.getElementById('countryFilter');
     if (!filterSelect) return;
@@ -410,7 +410,7 @@ function populateCountryFilter() {
         if (users) {
             Object.values(users).forEach(u => {
                 if (u.country && u.country.trim() !== '') {
-                    countries.add(u.country);
+                    countries.add(u.country.trim());
                 }
             });
         }
@@ -422,10 +422,12 @@ function populateCountryFilter() {
         if (userCountry && countries.has(userCountry)) {
             filterSelect.value = userCountry;
         }
+        countryListLoaded = true;
+        console.log("🌍 قائمة البلدان المتاحة:", Array.from(countries));
     });
 }
 
-// ---------- استماع لتغييرات المتصلين (مع حساب العدد وتحسينات) ----------
+// ---------- استماع لتغييرات المتصلين (تحديث فوري وسريع) ----------
 onlineRef.on("value", function(snapshot) {
     if (!onlineListDiv) return;
     const users = snapshot.val();
@@ -435,10 +437,7 @@ onlineRef.on("value", function(snapshot) {
     let totalOnline = 0;
     const now = Date.now();
     const selectedCountry = document.getElementById('countryFilter')?.value || 'all';
-    const currentUserCountry = (userCountry && userCountry.trim() !== "") ? userCountry : null;
-
-    console.log("🔍 استلام بيانات المتصلين من Firebase:", users);
-    console.log("👤 بلد المستخدم الحالي:", currentUserCountry);
+    const currentUserCountry = userCountry; // تم تنظيفه بالفعل
 
     if (!users) {
         onlineListDiv.innerHTML = "<span class='online-list-placeholder'>لا يوجد متصلون</span>";
@@ -452,12 +451,13 @@ onlineRef.on("value", function(snapshot) {
             
             totalOnline++;
             
-            if (currentUserCountry && u.country && u.country.trim() === currentUserCountry) {
+            // تنظيف بلد المستخدم الآخر
+            const otherCountry = u.country ? u.country.trim() : '';
+            if (currentUserCountry && currentUserCountry !== 'غير محدد' && otherCountry === currentUserCountry) {
                 sameCountryCount++;
-                console.log(`✅ مستخدم من نفس البلد: ${u.name} (${u.country})`);
             }
             
-            if (selectedCountry !== 'all' && u.country !== selectedCountry) continue;
+            if (selectedCountry !== 'all' && otherCountry !== selectedCountry) continue;
             count++;
             const btn = document.createElement("button");
             btn.className = "user-btn";
@@ -473,34 +473,33 @@ onlineRef.on("value", function(snapshot) {
         }
     }
     
+    // تحديث العداد فوراً
     const onlineCountSpan = document.getElementById('onlineCount');
     if (onlineCountSpan) {
-        if (currentUserCountry) {
+        if (currentUserCountry && currentUserCountry !== 'غير محدد') {
             onlineCountSpan.innerText = `(${sameCountryCount})`;
-            console.log(`📊 عدد المتصلين في بلد "${currentUserCountry}": ${sameCountryCount}`);
         } else {
             onlineCountSpan.innerText = `(${totalOnline})`;
-            console.warn("⚠️ المستخدم ليس له بلد مخزن. يتم عرض إجمالي المتصلين.");
         }
     }
 });
 
-// ---------- مستمع تغيير الفلتر ----------
+// ---------- مستمع تغيير الفلتر (تحديث فوري دون تأخير) ----------
 const filterSelect = document.getElementById('countryFilter');
 if (filterSelect) {
     filterSelect.addEventListener('change', () => {
-        onlineRef.once('value'); // refresh
+        // إعادة تشغيل الحدث يدوياً لتحديث القائمة فوراً
+        onlineRef.once('value'); // استدعاء فوري
     });
 }
 
-// ---------- دالة الاتصال وإنهاء المكالمة مع معالجة أفضل للأخطاء ----------
+// ---------- دالة الاتصال وإنهاء المكالمة ----------
 function toggleCall(peerId) {
     if (!localStream) {
         alert("الكاميرا لم تبدأ بعد");
         return;
     }
     if (currentCall && currentCallPeerId === peerId) {
-        console.log("🔚 إنهاء المكالمة مع:", peerId);
         currentCall.close();
         if (currentConnection) currentConnection.close();
         currentCall = null;
@@ -510,7 +509,6 @@ function toggleCall(peerId) {
         if (endCallBtn) endCallBtn.classList.add("hidden");
         updateOnlineList();
     } else {
-        console.log("📞 بدء مكالمة مع:", peerId);
         if (currentCall) {
             currentCall.close();
             if (currentConnection) currentConnection.close();
@@ -518,11 +516,9 @@ function toggleCall(peerId) {
         currentCall = peer.call(peerId, localStream);
         currentCallPeerId = peerId;
         currentCall.on("stream", function(remoteStream) {
-            console.log("✅ تم استقبال بث الفيديو من:", peerId);
             if (remoteVideo) remoteVideo.srcObject = remoteStream;
         });
         currentCall.on("close", function() {
-            console.log("🔚 انتهت المكالمة مع:", peerId);
             if (remoteVideo) remoteVideo.srcObject = null;
             currentCall = null;
             currentConnection = null;
@@ -532,7 +528,8 @@ function toggleCall(peerId) {
         currentCall.on("error", function(err) {
             console.error("❌ خطأ في المكالمة:", err);
             if (err.type === 'peer-unavailable') {
-                alert(`الطرف الآخر (${peerId}) غير متاح. تأكد من اتصاله بالإنترنت وأن معرفه صحيح.\nإذا استمرت المشكلة، حاول تحديث الصفحة.`);
+                alert('عذراً، الطرف الآخر غير متاح حالياً. سيتم إخفاء اسمه لحين عودته.');
+                updateOnlineList();
             } else {
                 alert('فشل الاتصال: ' + (err.message || err.type));
             }
@@ -540,12 +537,7 @@ function toggleCall(peerId) {
             currentCallPeerId = null;
         });
         currentConnection = peer.connect(peerId);
-        currentConnection.on("open", function() {
-            console.log("💬 اتصال دردشة مفتوح مع:", peerId);
-        });
-        currentConnection.on("data", function(data) {
-            displayMessage(data, "other");
-        });
+        currentConnection.on("data", function(data) { displayMessage(data, "other"); });
         if (endCallBtn) endCallBtn.classList.remove("hidden");
     }
 }
@@ -571,7 +563,6 @@ if (sendBtn) {
         displayMessage(text, "me");
         if (currentConnection && currentConnection.open) {
             currentConnection.send(text);
-            console.log("📤 تم إرسال الرسالة:", text);
         } else {
             alert("لا يوجد اتصال دردشة نشط");
         }
@@ -646,7 +637,7 @@ if (suspendedOkBtn) {
 
 // ---------- بدء تشغيل الكاميرا ----------
 initCamera().then(() => {
-    console.log("✅ الكاميرا جاهزة، الفيديو المحلي يعمل.");
+    console.log("✅ الكاميرا جاهزة.");
 }).catch(err => {
     console.error("❌ فشل تشغيل الكاميرا:", err);
 });
